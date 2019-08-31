@@ -1,0 +1,76 @@
+version: '2'
+
+services:
+  apache:
+    build:
+      context: ./
+      dockerfile: docker/apache/Dockerfile
+    container_name: ${APP_NAME}-apache
+    restart: always
+    ports:
+      - '80:80'
+    volumes:
+      - ./:/var/www/html
+      - ./docker/apache/vhost.conf:/etc/apache2/sites-available/000-default.conf
+      - ./logs/apache2:/var/log/apache2
+    depends_on:
+      - db
+    networks:
+      - laravel
+  db:
+    image: mysql:5.7
+    container_name: ${APP_NAME}-mysql
+    volumes:
+      - "./docker/mysql/data:/var/lib/mysql"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: hyperion3
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    networks:
+      - laravel
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.1
+    restart: always
+    container_name: ${APP_NAME}-elasticsearch
+    environment:
+        - discovery.type=single-node
+        - cluster.name=${APP_NAME}-elasticsearch
+        - node.name=elasticsearch-default
+    ports:
+        - 9200:9200
+    networks:
+      - laravel
+  node:
+      container_name: ${APP_NAME}-node
+      build:
+        context: .
+        dockerfile: docker/node/Dockerfile
+      working_dir: /app
+      volumes:
+        - .:/app
+      command: bash -c "ln -sf /node_modules node_modules && sleep infinity"
+      networks:
+      - laravel
+  phpmyadmin:
+    container_name: ${APP_NAME}-phpmyadmin
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: db
+    networks:
+      - laravel
+
+networks:
+  laravel:
+
+
+
+
